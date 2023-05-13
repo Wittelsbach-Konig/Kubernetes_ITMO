@@ -139,7 +139,7 @@ beonewithyuri/test            latest    34d04760f1b6   2 hours ago         49.7M
 
 Теперь для удобства создадим файл `docker-compose.yml`, где опишем конфигурацию сборки и запуска приложений.
 
-```yaml
+```yml
 # Версия API Docker compose
 version: "3"
 
@@ -262,4 +262,117 @@ $ sudo docker push beonewithyuri/web-server:1.0.0
 Откроем web-интерфейс Docker Hub по адресу `https://hub.docker.com/` и найдем загруженный image
 
 ![image](https://github.com/Wittelsbach-Konig/Kubernetes_ITMO/assets/59288516/c66da257-b6fe-4b75-a7df-16f93d9273b1)
+
+## Шаг 6
+
+Создадим Kubernetes Deployment manifest, запускающий container из созданного image. Кол-во реплик равно 2.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: server
+spec: 
+  replicas: 2
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      containers:
+        - name: web-server
+          image: beonewithyuri/web-server:1.0.0
+          ports:
+            - containerPort: 8000
+```
+
+Добавим Proba.
+
+```yml
+          livenessProbe:
+            httpGet:
+              path: /hello.html
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+```
+
+## Шаг 7
+
+Установим manifest в кластер Kubernetes.
+
+```shell
+$ kubectl apply --filename deployment.yaml --namespace default
+deployment.apps/web unchanged
+$ kubectl get pods --namespace default
+NAME                  READY   STATUS    RESTARTS   AGE
+web-75fdb6d57-8f2wv   1/1     Running   0          60m
+web-75fdb6d57-jw8x7   1/1     Running   0          60m
+```
+
+## Шаг 8 
+
+Обеспечим доступ к web-приложению внутри кластера и проверим его работу.
+
+```shell
+$ kubectl port-forward --address 0.0.0.0 deployment/web 8080:8000
+Forwarding from 0.0.0.0:8080 -> 8000
+Handling connection for 8080
+```
+
+```shell
+$ curl http://127.0.0.1:8080/hello.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>
+      Hello World!
+    </title>
+  </head>
+  <body>
+    Hello World!
+  </body>
+</html>
+```
+
+Выведем информацию об развертывании.
+
+```shell
+$ kubectl describe deployment web
+Name:                   web
+Namespace:              default
+CreationTimestamp:      Sun, 14 May 2023 00:06:09 +0300
+Labels:                 app=server
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=server
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=server
+  Containers:
+   web-server:
+    Image:        beonewithyuri/web-server:1.0.0
+    Port:         8000/TCP
+    Host Port:    0/TCP
+    Liveness:     http-get http://:8000/hello.html delay=3s timeout=1s period=3s #success=1 #failure=3
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   web-75fdb6d57 (2/2 replicas created)
+Events:          <none>
+```
+
 
