@@ -261,5 +261,5 @@ $ sudo docker push beonewithyuri/web-server:1.0.0
 
 Откроем web-интерфейс Docker Hub по адресу `https://hub.docker.com/` и найдем загруженный image
 
-![image](image.png)
+![image](https://github.com/Wittelsbach-Konig/Kubernetes_ITMO/assets/59288516/c66da257-b6fe-4b75-a7df-16f93d9273b1)
 
